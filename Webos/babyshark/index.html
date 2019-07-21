@@ -1,0 +1,138 @@
+<!DOCTYPE html>
+<html>
+<head>
+<style type="text/css">
+
+	body {
+			width: 100%;
+			height: 100%;
+			background-color: #202020;
+	}
+	.wrap{
+		margin-top:100px;
+	}
+
+	.babyshark{
+  position: fixed;
+  right: 0;
+  bottom: 0;
+  min-width: 100%; 
+  min-height: 100%;
+	}
+
+</style>
+
+</head>
+<body>
+	<div align="center" class="wrap">
+		<video class="babyshark" autoplay loop src="baby_shark.mp4" >
+		</video>
+	</div>
+			
+</body>
+<script src="webOSjs-0.1.0/webOS.js" charset="utf-8"></script>
+<script type="text/javascript"></script>
+<script>
+
+	var data1 = 0;
+	var data2 = 0;
+	var data3 = 0;
+	var data4 = 0;
+ 
+	function connect() {
+	   websocket = new WebSocket('ws://192.168.43.213:9999');
+	   websocket.onopen = function (evt) { onOpen(evt) };
+	   websocket.onclose = function (evt) { onClose(evt) };
+	   websocket.onmessage = function (evt) { onMessage(evt) };
+	   websocket.onerror = function (evt) { onError(evt) };
+ 
+	   function onOpen(evt) {
+		  doSend();
+	   }
+	   function onClose(evt) {
+		  setTimeout(function () {
+			 connect();
+		  }, 1000);
+ 
+	   }
+	   function onMessage(evt) {
+		  message = JSON.parse(evt.data);
+ 
+		  data1 = message.O;
+		  data2 = message.A;
+		  data3 = message.B;
+		  data4 = message.Z;
+		  
+		  websocket.close();
+	   }
+ 
+	   function onError(evt) {
+ 
+	   }
+	   function doSend() {
+		  var message = {
+			 "msg_type": "command",
+			 "device_id": "IFX001",
+			 "command": "ON",
+			 "X": 0,
+			 "Y": 0,
+			 "Z": 0,
+			 "B": 0,
+			 "A": 0,
+			 "O": 0
+		  };
+ 
+ 
+		  websocket.send(JSON.stringify(message));
+	   }
+ 
+
+	   var noti1 = data1;
+	   var noti2 = data2;
+	   var noti3 = data3;
+	   var noti4 = data4;
+ 
+	   var msgAlert = "";
+		if (parseInt(noti1) < 30) {
+			msgAlert += "B.T. is low ";
+		} else if (parseInt(noti1) > 40) {
+			msgAlert += "B.T. is high ";
+		}
+
+
+		if (parseInt(noti3) < 30) {
+			msgAlert += " BPM is low";
+		} else if (parseInt(noti3) > 200 ) {
+			msgAlert += " BPM is high";
+		}
+
+		if (parseInt(noti4) >11000) {
+			msgAlert += "<br/>Baby might be in Suffocation!!";
+		} 
+	   console.log(msgAlert);
+	   var lunaReq = webOS.service.request("luna://com.webos.notification",
+		  {
+			 method: "createToast",
+			 parameters: {
+				"sourceId": "com.babyshark.app",
+				"message": msgAlert,
+				
+			 },
+			 onSuccess: function (args) {
+ 
+			 },
+			 onFailure: function (args) {
+			 }
+		  });
+	}
+ 
+	connect();
+ 
+ </script>
+
+
+</html>
+
+
+
+

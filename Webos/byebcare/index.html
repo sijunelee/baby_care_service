@@ -1,0 +1,212 @@
+<!DOCTYPE html>
+<meta charset="utf-8" />
+<title>ByeBCare</title>
+<style>
+    .info1{
+		width:300px;
+		text-align:center;
+		border:2px solid red;
+		margin-top:5px;
+		margin-bottom: 10px;
+		background-color: white;
+		float:right;
+		margin-right:3px;
+    }
+	.info2{
+		width:200px;
+		text-align:center;
+		border:2px solid red;
+		margin-top:5px;
+		margin-bottom: 10px;
+		background-color: white;
+		float:right;
+    }
+    .title{
+        text-align: left;
+		color: white;
+    }
+	.container{
+		width: 70%;
+		margin:0 auto;
+	}
+	p{
+		font-size:20px;
+		color:black;
+		font-weight: 500;
+		line-height: 0px;
+	}
+	.wrap{
+		clear:both;
+	}
+</style>
+<script src="webOSjs-0.1.0/webOS.js" charset="utf-8"></script>
+<script src="plotly.min.js"></script>
+<body>
+	<div class="container">
+		<h2 class="title">Check your baby's Temperature & Pulse!</h2>
+	
+		<div class="wrap">
+			<div id="chart1"></div>
+			<div class="info1">
+				<p>Body - Temperature: <span id="tempO"></span>	</p>
+			</div>
+			<div class="info1">
+				<p>Enviro - Temperature: <span id="tempA"></span>	</p>
+			</div>
+		</div>
+	
+		<div class="wrap">
+			<div id="chart2"></div>
+			<div class="info2">
+				<p>Pulse: <span id="pulse"></span></p>
+			</div>
+		</div>
+	
+	</div>
+</body>
+
+
+
+
+<script>
+
+	var data1 = 0;
+	var data2 = 0;
+	var data3 = 0;
+	var data4 = 0;
+
+	function connect() {
+		var output = document.getElementById("output");
+		websocket = new WebSocket('ws://192.168.43.213:9999');
+		websocket.onopen = function (evt) { onOpen(evt) };
+		websocket.onclose = function (evt) { onClose(evt) };
+		websocket.onmessage = function (evt) { onMessage(evt) };
+		websocket.onerror = function (evt) { onError(evt) };
+
+		function onOpen(evt) {
+			doSend();
+		}
+		function onClose(evt) {
+			setTimeout(function () {
+				connect();
+			}, 1000);
+
+		}
+		function onMessage(evt) {
+			message = JSON.parse(evt.data);
+
+			data1 = message.O;
+			data2 = message.A;
+			data3 = message.B;
+			data4 = message.Z;
+			
+			websocket.close();
+		}
+
+		function onError(evt) {
+
+		}
+		function doSend() {
+			var message = {
+				"msg_type": "command",
+				"device_id": "IFX001",
+				"command": "ON",
+				"X": 0,
+				"Y": 0,
+				"Z": 0,
+				"B": 0,
+				"A": 0,
+				"O": 0
+			};
+
+
+			websocket.send(JSON.stringify(message));
+		}
+
+		document.getElementById("tempO").innerHTML = data1;
+		var noti1 = data1;
+		document.getElementById("tempA").innerHTML = data2;
+		var noti2 = data2;
+		document.getElementById("pulse").innerHTML = data3;
+		var noti3 = data3;
+		var noti4 = data4;
+
+		var msgAlert = "";
+		if (parseInt(noti1) < 30) {
+			msgAlert += " B.T. is low ";
+		} else if (parseInt(noti1) > 40) {
+			msgAlert += " B.T. is high ";
+		}
+
+
+		if (parseInt(noti3) < 30) {
+			msgAlert += " BPM is low";
+		} else if (parseInt(noti3) > 200 ) {
+			msgAlert += " BPM is high";
+		}
+
+		if (parseInt(noti4) >11000) {
+			msgAlert += "<br/>Baby might be in Suffocation!!";
+		} 
+
+		console.log(msgAlert);
+		var lunaReq = webOS.service.request("luna://com.webos.notification",
+			{
+				method: "createToast",
+				parameters: {
+					"sourceId": "com.byebcare.app",
+					"message": msgAlert,
+					//"onclick": { "appId": "com.byebcare.app" }
+				},
+				onSuccess: function (args) {
+
+				},
+				onFailure: function (args) {
+				}
+			});
+	}
+
+	connect();
+
+	Plotly.plot('chart1', [{
+		y: [data1],
+		type: 'line'
+	}]);
+	Plotly.plot('chart2', [{
+		y: [data3],
+		type: 'line'
+	}]);
+
+
+	var cnt1 = 0;
+	var cnt2 = 0;
+
+
+	setInterval(function () {
+
+		Plotly.extendTraces('chart1', { y: [[data1]] }, [0]);
+		cnt1++;
+		if (cnt1 > 200) {
+			Plotly.relayout('chart1', {
+				xaxis: {
+					range: [cnt1 - 100, cnt1]
+				}
+			})
+		}
+	}, 1000);
+
+	setInterval(function () {
+
+		Plotly.extendTraces('chart2', { y: [[data3]] }, [0]);
+		cnt2++;
+		if (cnt2 > 200) {
+			Plotly.relayout('chart2', {
+				xaxis: {
+					range: [cnt2 - 100, cnt2]
+				}
+			})
+		}
+	}, 1000);
+
+
+</script>
